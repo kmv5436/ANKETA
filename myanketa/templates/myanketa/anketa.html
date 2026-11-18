@@ -1,0 +1,174 @@
+{% extends 'myanketa/base.html' %}
+
+{% block title %}{{ title|default:"Анкета о детях сотрудника" }}{% endblock %}
+
+{% block content %}
+<h1>{{ title|default:"Анкета «Сведения о детях сотрудника»" }}</h1>
+<p class="hint">
+    Заполните сведения о сотруднике и о каждом ребёнке. Если детей нет — оставьте блоки пустыми.
+    Если оба супруга работают в организации, анкету заполняет один из них, второй указывает
+    табельный номер супруга(и) в разделе 1 — это нужно, чтобы данные о детях не дублировались.
+</p>
+
+<form method="post" novalidate>
+    {% csrf_token %}
+    {{ formset.management_form }}
+
+    {# ===================== РАЗДЕЛ 1. СОТРУДНИК ===================== #}
+    <h2>Раздел 1. Сведения о сотруднике</h2>
+
+    {% if form.non_field_errors %}
+        <ul class="errorlist">
+            {% for error in form.non_field_errors %}
+                <li>{{ error }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    <table>
+        {% for field in form %}
+            <tr>
+                <th style="width: 40%">
+                    {{ field.label }}
+                    {% if field.field.required %}<span style="color:#c62828">*</span>{% endif %}
+                </th>
+                <td>
+                    {{ field }}
+                    {% if field.help_text %}
+                        <div class="help-text">{{ field.help_text }}</div>
+                    {% endif %}
+                    {% if field.errors %}
+                        <ul class="errorlist">
+                            {% for error in field.errors %}<li>{{ error }}</li>{% endfor %}
+                        </ul>
+                    {% endif %}
+                </td>
+            </tr>
+        {% endfor %}
+    </table>
+
+    {# ===================== РАЗДЕЛ 2. ДЕТИ ===================== #}
+    <h2>Раздел 2. Сведения о детях</h2>
+    <p class="hint">
+        Заполните отдельный блок на каждого ребёнка. Блоки можно добавлять и удалять.
+    </p>
+
+    {# Ошибки самого набора форм (например, превышено число форм) #}
+    {% if formset.non_form_errors %}
+        <ul class="errorlist">
+            {% for error in formset.non_form_errors %}<li>{{ error }}</li>{% endfor %}
+        </ul>
+    {% endif %}
+
+    <div id="children-container">
+        {% for child_form in formset %}
+            <div class="child-block">
+                <h3>Ребёнок {{ forloop.counter }}</h3>
+
+                {% for hidden in child_form.hidden_fields %}{{ hidden }}{% endfor %}
+
+                <table>
+                    {% for field in child_form.visible_fields %}
+                        {% if field.name != 'DELETE' %}
+                            <tr>
+                                <th style="width: 40%">
+                                    {{ field.label }}
+                                    {% if field.field.required %}<span style="color:#c62828">*</span>{% endif %}
+                                </th>
+                                <td>
+                                    {{ field }}
+                                    {% if field.help_text %}
+                                        <div class="help-text">{{ field.help_text }}</div>
+                                    {% endif %}
+                                    {% if field.errors %}
+                                        <ul class="errorlist">
+                                            {% for error in field.errors %}<li>{{ error }}</li>{% endfor %}
+                                        </ul>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endif %}
+                    {% endfor %}
+                </table>
+
+                {% if child_form.instance.pk %}
+                    <label style="font-size:13px;color:#c62828;display:block;margin-top:8px;">
+                        {{ child_form.DELETE }} Удалить этого ребёнка
+                    </label>
+                {% else %}
+                    {# Для новых (несохранённых) форм DELETE тоже нужно отрисовать, но скрыто #}
+                    <div style="display:none;">{{ child_form.DELETE }}</div>
+                {% endif %}
+            </div>
+        {% endfor %}
+    </div>
+
+    <div class="actions">
+        <button type="button" class="btn btn-secondary" onclick="addChild()">+ Добавить ребёнка</button>
+    </div>
+
+    {# ===================== КНОПКИ ===================== #}
+    <div class="actions">
+        <button type="submit" class="btn btn-primary">{{ submit_label|default:"Сохранить анкету" }}</button>
+        <a href="{% url 'employee_list' %}" class="btn btn-secondary">← К списку анкет</a>
+    </div>
+</form>
+
+{# ===================== ШАБЛОН ДЛЯ ДОБАВЛЕНИЯ РЕБЁНКА ===================== #}
+<template id="empty-child-template">
+    <div class="child-block">
+        <h3>Новый ребёнок</h3>
+        {% with formset.empty_form as empty %}
+            {% for hidden in empty.hidden_fields %}{{ hidden }}{% endfor %}
+            <table>
+                {% for field in empty.visible_fields %}
+                    {% if field.name != 'DELETE' %}
+                        <tr>
+                            <th style="width: 40%">
+                                {{ field.label }}
+                                {% if field.field.required %}<span style="color:#c62828">*</span>{% endif %}
+                            </th>
+                            <td>
+                                {{ field }}
+                                {% if field.help_text %}
+                                    <div class="help-text">{{ field.help_text }}</div>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endif %}
+                {% endfor %}
+            </table>
+            <div style="display:none;">{{ empty.DELETE }}</div>
+        {% endwith %}
+    </div>
+</template>
+
+<script>
+/**
+ * Добавляет новый блок ребёнка, клонируя шаблон empty_form.
+ * Плейсхолдер __prefix__ в шаблоне заменяется на текущий индекс TOTAL_FORMS.
+ */
+function addChild() {
+    var totalForms = document.getElementById('id_children-TOTAL_FORMS');
+    if (!totalForms) {
+        alert('Не найден служебный input TOTAL_FORMS. Проверьте префикс формы.');
+        return;
+    }
+    var currentCount = parseInt(totalForms.value, 10);
+    var templateHtml = document.getElementById('empty-child-template').innerHTML;
+    var html = templateHtml.replace(/__prefix__/g, currentCount);
+
+    var container = document.getElementById('children-container');
+    container.insertAdjacentHTML('beforeend', html);
+
+    totalForms.value = currentCount + 1;
+
+    // Прокрутка к новому блоку
+    var blocks = container.querySelectorAll('.child-block');
+    var lastBlock = blocks[blocks.length - 1];
+    if (lastBlock) {
+        lastBlock.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+</script>
+{% endblock %}

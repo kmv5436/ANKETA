@@ -1,0 +1,23 @@
+{% extends 'myanketa/base.html' %}
+
+{% block title %}Статистика{% endblock %}
+
+{% block content %}
+<h1>Статистика</h1>
+
+<p>Всего сотрудников: <b>{{ total_employees }}</b>, всего детей: <b>{{ total_children }}</b></p>
+
+<h2>Распределение по статусу занятости</h2>
+<table>
+    <tr><th>Статус</th><th>Количество</th></tr>
+    {% for row in by_status %}
+        <tr><td>{{ row.status_display }}</td><td>{{ row.total }}</td></tr>
+    {% empty %}
+        <tr><td colspan="2">Данных пока нет</td></tr>
+    {% endfor %}
+</table>
+
+<div class="actions">
+    <a href="{% url 'employee_list' %}" class="btn btn-secondary">← К списку анкет</a>
+</div>
+{% endblock %}
