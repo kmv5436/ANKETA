@@ -1,2 +1,27 @@
+# База данных
 db.sqlite3
 db.sqlite3-journal
+
+# Виртуальное окружение
+django_venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+
+# Django
+*.log
+/staticfiles/
+/media/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+*.swp
+
+# Секреты
+.env
